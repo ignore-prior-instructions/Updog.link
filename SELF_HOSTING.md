@@ -107,3 +107,40 @@ invisible mode, so nothing is rendered and no visitor is asked to click anything
 
 **Donations** are wired to GitHub Sponsors via `.github/FUNDING.yml` and the `donate_url` variable. Set that variable
 to an empty string to hide the donation line entirely.
+
+## Safety
+
+The service takes two pieces of untrusted input, a slug and a destination URL, and both are validated narrowly.
+
+**Slugs** must match `^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$` — ASCII letters, digits, underscore and hyphen, starting
+with an alphanumeric, 1 to 64 characters. Because `/`, `\`, `.`, `%` and whitespace can't appear, path traversal
+can't be expressed at all, and because `<`, `>` and quotes can't appear, a slug can't break out into markup. The
+same check runs on the read path, so a crafted URL can't reach R2 with an unvalidated key either. A few names like
+`api` are reserved.
+
+**Destinations** must parse as absolute `http:` or `https:` URLs, under 2048 characters, with no whitespace —
+which also rules out CR and LF, so the value can't inject extra response headers. Schemes like `javascript:` and
+`data:` are refused.
+
+**No link may point back at this service**, on any hostname it answers to, at any subdomain depth. Hostnames are
+lowercased and trailing dots stripped first, since `example.com.` is the same DNS name as `example.com` and would
+otherwise slip through. This is what stops redirect loops being created. A loop spanning two different services is
+still possible in principle, but the Worker never fetches a destination — it only returns a `Location` header — so
+nothing recurses server-side, and the visitor's browser caps the chain itself.
+
+**Nothing user-supplied is ever rendered into HTML.** The create endpoint replies with JSON and the page writes it
+out with `textContent`, so there is no injection point.
+
+**The create endpoint requires `Content-Type: application/json`**, which a cross-origin HTML form cannot set
+without a preflight this Worker never answers. There are no accounts, sessions or cookies, so there is no
+authenticated state for a CSRF to abuse in the first place.
+
+Run the checks yourself against a local dev server or a deployment:
+
+```sh
+scripts/security-test.sh                     # against npx wrangler dev
+scripts/security-test.sh https://updog.link  # against a deployment
+```
+
+It's safe to point at production: anything that should be accepted is stopped by the bot check before a link is
+written, and the script paces itself around the rate limit.

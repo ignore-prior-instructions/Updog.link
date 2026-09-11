@@ -15,8 +15,17 @@
 //   APEX_HOST         hostname that serves shortlinks. Empty in local dev.
 //   SITE_HOST         hostname that serves the landing page. Empty in local dev.
 
-const SLUG_RE = /^[A-Za-z0-9_-]{1,64}$/;
-const RESERVED = new Set(["api", "favicon.ico", "robots.txt", "index.html", "404.html"]);
+// Slugs become R2 object keys and appear in URLs, so the allowed set is kept
+// deliberately narrow: ASCII letters, digits, underscore and hyphen, starting
+// with an alphanumeric, 1-64 characters. That excludes "/", "\\", ".", "%" and
+// whitespace, so path traversal and encoding tricks can't be expressed at all,
+// and excludes "<", ">", quotes, so a slug can never break out into markup.
+const SLUG_RE = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
+
+// "api" is a real route. The rest are reserved to avoid confusion rather than
+// for safety. Anything containing a dot is already unmatchable by SLUG_RE.
+const RESERVED = new Set(["api", "admin", "favicon", "robots", "static", "assets"]);
+
 const MAX_DESTINATION_LENGTH = 2048;
 
 // Example links. The landing page shows a different one as its placeholder on
@@ -50,6 +59,14 @@ export default {
 
     if (pathname === "/api/links") {
       if (request.method !== "POST") return json({ error: "Method not allowed." }, 405);
+      // CSRF guard. A cross-origin HTML form can only send urlencoded, form-data
+      // or text/plain; requiring JSON forces a preflight, which this Worker
+      // never answers. There is no session or cookie to abuse either, so this
+      // is belt-and-braces rather than the only thing standing in the way.
+      const contentType = request.headers.get("Content-Type") || "";
+      if (!contentType.toLowerCase().startsWith("application/json")) {
+        return json({ error: "Expected Content-Type: application/json." }, 415);
+      }
       return createLink(request, env, url);
     }
     if (request.method !== "GET" && request.method !== "HEAD") {
@@ -115,7 +132,16 @@ async function createLink(request, env, url) {
   return json({ url: `${scheme}://${linkHost}/${slug}`, destination }, 201);
 }
 
+// A hostname with a trailing dot ("updog.link.") is the same DNS name as one
+// without, and resolves to the same server — so it has to be normalised before
+// comparing, or it becomes a way to point a link back at this service.
+function normalizeHost(host) {
+  return host.replace(/\.+$/, "").toLowerCase();
+}
+
 function parseDestination(raw, ownHosts) {
+  // Rejecting whitespace also rejects CR and LF, so a destination can't inject
+  // extra response headers via the Location value.
   if (!raw || raw.length > MAX_DESTINATION_LENGTH || /\s/.test(raw)) return null;
   let parsed;
   try {
@@ -123,9 +149,15 @@ function parseDestination(raw, ownHosts) {
   } catch {
     return null;
   }
+  // Only http(s): blocks javascript:, data:, file: and friends.
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
-  const host = parsed.hostname;
-  if (ownHosts.some((own) => host === own || host.endsWith("." + own))) return null;
+
+  // Never point at ourselves, on any hostname this service answers to, at any
+  // depth. Stops redirect loops at the source.
+  const host = normalizeHost(parsed.hostname);
+  const mine = ownHosts.map(normalizeHost);
+  if (mine.some((own) => host === own || host.endsWith("." + own))) return null;
+
   return parsed.href;
 }
 
