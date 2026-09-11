@@ -1,0 +1,66 @@
+name: Terraform
+
+on:
+  pull_request:
+    paths: ["terraform/**", "worker.js"]
+  push:
+    branches: [master]
+    paths: ["terraform/**", "worker.js"]
+
+# Only one deploy at a time; R2's state lock would otherwise make a second
+# concurrent run fail rather than queue.
+concurrency:
+  group: terraform
+  cancel-in-progress: false
+
+defaults:
+  run:
+    working-directory: terraform
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  AWS_ENDPOINT_URL_S3: https://${{ secrets.CLOUDFLARE_ACCOUNT_ID }}.r2.cloudflarestorage.com
+  TF_VAR_account_id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  TF_VAR_domain: ${{ secrets.DOMAIN }}
+  # Not secret, just specific to this deployment (updog.link splits the
+  # landing page onto its own subdomain). A fork's own CI run should either
+  # remove this line or set its own value.
+  TF_VAR_site_subdomain: whats
+
+jobs:
+  plan:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3 # terraform_wrapper defaults to true, capturing step outputs below
+      - run: terraform init -input=false
+      - id: plan
+        run: terraform plan -input=false -no-color
+        continue-on-error: true
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const body = `#### Terraform Plan\n<details><summary>Show plan</summary>\n\n\`\`\`terraform\n${{ steps.plan.outputs.stdout }}\n\`\`\`\n\n</details>`;
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body,
+            });
+      - if: steps.plan.outcome == 'failure'
+        run: exit 1
+
+  apply:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - run: terraform init -input=false
+      - run: terraform apply -input=false -auto-approve -no-color
