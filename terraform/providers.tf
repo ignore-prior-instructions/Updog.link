@@ -8,10 +8,10 @@ terraform {
     }
   }
 
-  # State lives in an R2 bucket, using R2's S3-compatible API.
-  # The account-specific endpoint is supplied at init time:
-  #   terraform init -backend-config=backend.hcl
-  # (copy backend.hcl.example to backend.hcl and fill in your account id)
+  # State lives in an R2 bucket, using R2's S3-compatible API. The
+  # account-specific endpoint isn't known here, so it's supplied at init
+  # time via the AWS SDK's standard endpoint override:
+  #   AWS_ENDPOINT_URL_S3=https://<account_id>.r2.cloudflarestorage.com terraform init
   backend "s3" {
     bucket                      = "updog-tfstate"
     key                         = "updog.link.tfstate"
