@@ -374,8 +374,6 @@ const STYLE = `
   a { color: var(--accent); }
   a:hover { color: var(--accent-deep); }
 
-  .page { min-height: 100vh; display: flex; flex-direction: column; }
-
   header {
     display: flex; justify-content: space-between; align-items: baseline;
     padding: 24px 40px; max-width: 920px; width: 100%; margin: 0 auto;
@@ -384,7 +382,7 @@ const STYLE = `
   nav { display: flex; gap: 24px; font: 600 14px 'Gabarito', system-ui, sans-serif; }
   nav a { text-decoration: none; }
 
-  main { flex: 1; max-width: 640px; width: 100%; margin: 0 auto; padding: 64px 40px 80px; text-align: center; }
+  main { max-width: 640px; width: 100%; margin: 0 auto; padding: 64px 40px 80px; text-align: center; }
   .doggo { font-size: 110px; line-height: 1; margin-bottom: 24px; }
   h1 { font: 400 52px/1.1 'Bitter', Georgia, serif; margin: 0 0 16px; }
   .tagline { font-size: 19px; line-height: 1.6; margin: 0 0 48px; color: var(--dim); }
@@ -440,11 +438,6 @@ const STYLE = `
     overflow-x: auto; }
   pre code { font: 400 14px 'JetBrains Mono', ui-monospace, monospace; white-space: pre; }
 
-  footer {
-    border-top: 1px solid var(--hairline); padding: 20px 40px;
-    text-align: center; font-size: 14px; color: var(--faint);
-  }
-
   @media (max-width: 640px) {
     header { padding: 20px; }
     main { padding: 40px 20px 56px; }
@@ -454,7 +447,6 @@ const STYLE = `
     .row { flex-direction: column; }
     button { padding: 14px 28px; }
     .sections { margin-top: 60px; }
-    footer { padding: 20px; }
   }
 `;
 
@@ -472,17 +464,13 @@ function layout(title, env, body) {
 <style>${STYLE}</style>
 </head>
 <body>
-<div class="page">
-  <header>
-    <div class="wordmark">${esc(env.APEX_HOST || "UPDOG.LINK").toUpperCase()}</div>
-    <nav><a href="${repoUrl}">GitHub</a>${donateLink}</nav>
-  </header>
-  <main>
+<header>
+  <div class="wordmark">${esc(env.APEX_HOST || "UPDOG.LINK").toUpperCase()}</div>
+  <nav><a href="${repoUrl}">GitHub</a>${donateLink}</nav>
+</header>
+<main>
 ${body}
-  </main>
-  <footer>But no, really — what is "Updog"?
-    <a href="https://knowyourmeme.com/memes/updog">Nothin' much. What's up with you?</a></footer>
-</div>
+</main>
 </body>
 </html>`;
 }
@@ -540,6 +528,10 @@ function landingPage(env) {
         <p>Deployment takes about ten minutes, start to finish. It runs on Cloudflare's free tier, so serving
           a few million redirects a month costs nothing. Clone
           <a href="${repoUrl}">the repository</a> to give it a try.</p>
+      </div>
+      <div>
+        <h2>But no, really — what is "Updog"?</h2>
+        <p><a href="https://knowyourmeme.com/memes/updog">Nothin' much. What's up with you?</a></p>
       </div>
     </div>
 
