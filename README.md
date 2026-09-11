@@ -34,11 +34,17 @@ newer, and Node (for local development only).
 1. **Add your domain to Cloudflare** (free plan) and note the two nameservers it assigns and your account id. Terraform
    can create the zone, but doing this first in the dashboard lets you switch nameservers at your registrar right away.
 2. **Enable R2** on the account (Cloudflare asks for a payment method; free-tier usage is $0). Create a bucket called
-   `updog-tfstate` for Terraform state. Then under R2 → *Manage API tokens*, create a token with object read and write
-   on that bucket. Keep its access key id and secret.
-3. **Create a Cloudflare API token** (My Profile → API Tokens → Create Token) with these permissions:
+   `updog-tfstate` for Terraform state. You also need S3-style credentials for it: either create a token under
+   R2 → *Manage API tokens*, or derive them from the token you make in the next step, since any token carrying
+   R2 permissions works. The access key id is the token's id, and the secret is the SHA-256 of the token string:
+
+   ```sh
+   printf '%s' "$CLOUDFLARE_API_TOKEN" | shasum -a 256
+   ```
+3. **Create a Cloudflare API token** (My Profile → API Tokens → Create Token → Create Custom Token). Use a *user*
+   token, not an account-owned one; account-owned tokens don't support Turnstile. Permissions:
    - Account: Workers Scripts (Edit), Workers R2 Storage (Edit), Turnstile (Edit), Account Settings (Read)
-   - Zone: Zone (Edit), DNS (Edit), Zone WAF (Edit)
+   - Zone: Zone (Edit), DNS (Edit), Zone WAF (Edit), Zone Settings (Edit), Workers Routes (Edit)
 4. **Configure and apply:**
 
    ```sh
@@ -54,8 +60,10 @@ newer, and Node (for local development only).
    terraform apply
    ```
 
-5. **Point your domain at Cloudflare.** At your registrar, set the nameservers to the ones from step 1 (also shown in
-   the `name_servers` output). If the custom domain resource failed because the zone wasn't active yet, run
+5. **Point your domain at Cloudflare.** At your registrar — not in your old DNS provider's zone — set the nameservers
+   to the ones from step 1 (also shown in the `name_servers` output). Check the change took with
+   `whois <domain> | grep -i 'name server'`. If the apex already has A or CNAME records in Cloudflare (the zone scan
+   imports them), delete them first: a Worker custom domain can't share a hostname with them. Then run
    `terraform apply` again once Cloudflare shows the zone as active.
 
 Open `https://your.domain` and make a link.
