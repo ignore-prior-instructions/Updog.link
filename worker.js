@@ -413,6 +413,7 @@ const STYLE = `
     font: 600 12px 'Gabarito', system-ui, sans-serif; text-transform: uppercase; letter-spacing: .5px;
     padding: 0 12px; align-self: stretch; }
   .roll:hover { background: transparent; color: var(--accent); }
+  .roll:disabled { opacity: .5; cursor: default; }
 
   /* Invisible in production, so it should occupy no space. :empty also
      collapses it if the Turnstile script fails to load, while still letting
@@ -549,9 +550,31 @@ function landingPage(env) {
   const ADJECTIVES = ${JSON.stringify(ADJECTIVES)};
   const NOUNS = ${JSON.stringify(NOUNS)};
   const pick = (list) => list[Math.floor(Math.random() * list.length)];
-  document.getElementById("roll").addEventListener("click", () => {
-    slug.value = pick(ADJECTIVES) + "-" + pick(NOUNS);
-    slug.focus();
+  const roll = () => pick(ADJECTIVES) + "-" + pick(NOUNS);
+
+  // Check the name is free before offering it, so you don't get told a name
+  // you never chose was taken. A Turnstile token is single use, so retrying
+  // after a rejected submit would need a fresh one — far simpler to look first.
+  async function isTaken(name) {
+    try {
+      const res = await fetch("/api/links/" + encodeURIComponent(name));
+      return res.status === 200;
+    } catch {
+      return false; // offline or blocked: offer it anyway, the server decides
+    }
+  }
+
+  const rollButton = document.getElementById("roll");
+  rollButton.addEventListener("click", async () => {
+    rollButton.disabled = true;
+    try {
+      let name = roll();
+      for (let i = 0; i < 3 && (await isTaken(name)); i++) name = roll();
+      slug.value = name;
+      slug.focus();
+    } finally {
+      rollButton.disabled = false;
+    }
   });
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -580,6 +603,9 @@ function landingPage(env) {
       result.append("Done: ", a);
     } else {
       result.textContent = body.error || "Something went wrong.";
+      // Someone took it in the meantime. Offer a fresh name so the next
+      // attempt isn't the same collision.
+      if (res && res.status === 409) rollButton.click();
     }
     if (window.turnstile) turnstile.reset();
   });
