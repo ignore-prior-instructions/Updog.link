@@ -14,6 +14,16 @@ own shortlink service. It doesn't collect information to track you or anyone els
 It's one Cloudflare Worker and one R2 bucket, deployed with Terraform, and fits entirely in Cloudflare's free tier.
 See [SELF_HOSTING.md](SELF_HOSTING.md) for how it works and the ten-minute setup.
 
+## Is there an API?
+
+Yes — the page is just a client of it.
+
+```sh
+curl https://updog.link/api/links/github
+```
+
+See [the API docs](SELF_HOSTING.md#the-api) for creating links and the rest of the resource.
+
 ## But no, really, what is "Updog?"
 
 [Nothin' much. What's up with you?](https://knowyourmeme.com/memes/updog)
