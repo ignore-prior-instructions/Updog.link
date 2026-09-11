@@ -1,7 +1,7 @@
 # What's Updog.link?
 
 Updog.link is an ad-free, open-source URL shortener that anyone can deploy and run.
-Live at [updog.link](https://updog.link).
+Make a link at [whats.updog.link](https://whats.updog.link); shortlinks live at `updog.link/<slug>`.
 
 ## Why does this exist?
 
@@ -18,7 +18,8 @@ The whole thing is one Cloudflare Worker and one R2 bucket, deployed with Terraf
   landing page at its root.
 - The R2 bucket holds one small JSON object per link, keyed by slug. Creating a link is a conditional put that fails
   if the slug exists, so it's first come, first served, and a new link is live the instant it's created.
-- Cloudflare Turnstile guards the create form against bots, and a rate limiting rule caps creations per IP.
+- Cloudflare Turnstile guards the create form against bots, running invisibly so nothing is rendered. A rate
+  limiting rule blocks a given IP after 5 creation attempts in 10 seconds.
 - Redirects are 302s, so a bad link can be removed and stop working immediately.
 - `terraform/` describes all of it: the DNS zone, the bucket, the Turnstile widget, the Worker and its bindings,
   the custom domain, and the rate limit. Terraform state lives in a second R2 bucket.
@@ -66,7 +67,10 @@ newer, and Node (for local development only).
    to the ones from step 1 (also shown in the `name_servers` output). Check the change took with
    `whois <domain> | grep -i 'name server'`. If the apex already has A or CNAME records in Cloudflare (the zone scan
    imports them), delete them first: a Worker custom domain can't share a hostname with them. Then run
-   `terraform apply` again once Cloudflare shows the zone as active.
+   `terraform apply` again once Cloudflare shows the zone as active. Terraform manages two custom domains — the apex
+   and the `whats` subdomain from `site_subdomain` — and Cloudflare creates their DNS records automatically.
+6. **Make it yours.** Edit `.github/FUNDING.yml` to your own GitHub username, or delete the file to drop the Sponsors
+   button. `github_repo` and `donate_url` in `terraform.tfvars` control what the landing page links to.
 
 Open `https://whats.your.domain` and make a link.
 
