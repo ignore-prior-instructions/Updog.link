@@ -32,6 +32,16 @@ resource "cloudflare_workers_script" "this" {
       type = "plain_text"
       text = var.donate_url
     },
+    {
+      name = "APEX_HOST"
+      type = "plain_text"
+      text = var.domain
+    },
+    {
+      name = "SITE_HOST"
+      type = "plain_text"
+      text = local.site_host
+    },
   ]
 }
 
