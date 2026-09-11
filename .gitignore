@@ -1,0 +1,13 @@
+# macOS
+**/.DS_Store
+
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.*
+terraform/terraform.tfvars
+terraform/backend.hcl
+
+# Wrangler local dev state
+.wrangler/
+node_modules/
