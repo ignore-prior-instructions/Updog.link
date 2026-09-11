@@ -11,7 +11,7 @@
 //   TURNSTILE_SECRET  server-side key for verifying the bot check
 //   TURNSTILE_SITEKEY public key rendered into the form
 //   GITHUB_REPO       "owner/name", linked from the page
-//   DONATE_URL        optional; donation line is shown only when set
+//   DONATE_URL        optional; adds a Donate link to the nav when set
 //   APEX_HOST         hostname that serves shortlinks. Empty in local dev.
 //   SITE_HOST         hostname that serves the landing page. Empty in local dev.
 
@@ -492,11 +492,6 @@ function landingPage(env) {
   const linkHost = esc(env.APEX_HOST || "updog.link");
   // A different example on every render, so the form suggests something real.
   const [sampleSlug, sampleUrl] = SAMPLES[Math.floor(Math.random() * SAMPLES.length)];
-  const donate = env.DONATE_URL
-    ? ` Donations cover hosting fees; proceeds are forwarded to the
-       <a href="https://girlswhocode.com/">Girls Who Code Foundation</a>.`
-    : "";
-
   return layout(
     "What's Updog?",
     env,
@@ -532,7 +527,7 @@ function landingPage(env) {
         <h2>Why it exists</h2>
         <p>A free shortlink service with a
           <a href="https://www.urbandictionary.com/define.php?term=Sick"><em>sick</em></a> name — and no
-          interest in tracking you or anyone else.${donate}</p>
+          interest in tracking you or anyone else.</p>
       </div>
       <div>
         <h2>There's an API</h2>
