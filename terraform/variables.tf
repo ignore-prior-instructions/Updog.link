@@ -21,9 +21,14 @@ variable "donate_url" {
 }
 
 variable "site_subdomain" {
-  description = "Subdomain that serves the landing page. The apex serves shortlinks."
+  description = <<-EOT
+    Optional subdomain for the landing page, e.g. "whats" for whats.<domain>.
+    Leave empty (the default) to serve the landing page and shortlinks from
+    the same apex domain; only set this if you want them split, the way
+    updog.link itself does.
+  EOT
   type        = string
-  default     = "whats"
+  default     = ""
 }
 
 variable "r2_location" {

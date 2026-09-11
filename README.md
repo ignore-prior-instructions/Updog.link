@@ -1,4 +1,4 @@
-# What's Updog.link?
+# What's Updog.link? 🐶
 
 Updog.link is an ad-free, open-source URL shortener that anyone can deploy and run.
 Make a link at [whats.updog.link](https://whats.updog.link); shortlinks live at `updog.link/<slug>`.

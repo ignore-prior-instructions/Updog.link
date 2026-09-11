@@ -26,10 +26,11 @@ export default {
     const apex = env.APEX_HOST;
     const site = env.SITE_HOST;
     const routed = Boolean(apex && site); // false in local dev, where host is localhost
+    const singleHost = routed && site === apex; // landing page and shortlinks share one host
     const onSite = routed && url.hostname === site;
 
-    // Anything that isn't one of the two hostnames (the workers.dev preview,
-    // say) belongs on the apex.
+    // Anything that isn't one of the configured hostnames (the workers.dev
+    // preview, say) belongs on the apex.
     if (routed && url.hostname !== apex && !onSite) {
       return redirect(`https://${apex}${pathname}${url.search}`, 301);
     }
@@ -48,9 +49,10 @@ export default {
       if (onSite || !routed) return html(landingPage(env));
       return redirect(`https://${site}/`, 301);
     }
-    // Shortlinks live on the apex. Reaching one via the site host is harmless;
-    // send it next door rather than 404ing.
-    if (onSite) return redirect(`https://${apex}${pathname}${url.search}`, 301);
+    // When the landing page has its own subdomain, shortlinks live on the
+    // apex. Reaching one via the site host is harmless; send it next door
+    // rather than 404ing. In single-host mode there's nowhere else to send it.
+    if (onSite && !singleHost) return redirect(`https://${apex}${pathname}${url.search}`, 301);
 
     const slug = pathname.slice(1);
     if (SLUG_RE.test(slug) && !RESERVED.has(slug)) {

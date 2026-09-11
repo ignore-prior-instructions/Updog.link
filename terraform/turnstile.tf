@@ -3,6 +3,6 @@
 resource "cloudflare_turnstile_widget" "create_form" {
   account_id = var.account_id
   name       = "${var.domain} create form"
-  domains    = [var.domain, local.site_host]
+  domains    = distinct([var.domain, local.site_host])
   mode       = "invisible"
 }

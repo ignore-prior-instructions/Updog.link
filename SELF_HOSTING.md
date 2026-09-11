@@ -3,8 +3,10 @@
 The whole thing is one Cloudflare Worker and one R2 bucket, deployed with Terraform.
 
 - `worker.js` serves the landing page, the create endpoint, redirects, and the 404 page. That's the entire application.
-- Two hostnames share it: `whats.<domain>` serves the landing page, and the apex serves shortlinks and 301s to the
-  landing page at its root.
+- By default, the landing page and shortlinks share the apex domain: `updog.link/` is the page, `updog.link/<slug>`
+  redirects. Set `site_subdomain` in `terraform.tfvars` if you'd rather split them, e.g. `whats.<domain>` for the page
+  and the apex only for shortlinks — that's how updog.link itself is set up. Split mode 301s the apex root to the
+  site subdomain and vice versa for any shortlink reached from it.
 - The R2 bucket holds one small JSON object per link, keyed by slug. Creating a link is a conditional put that fails
   if the slug exists, so it's first come, first served, and a new link is live the instant it's created.
 - Cloudflare Turnstile guards the create form against bots, running invisibly so nothing is rendered. A rate
@@ -56,12 +58,12 @@ newer, and Node (for local development only).
    to the ones from step 1 (also shown in the `name_servers` output). Check the change took with
    `whois <domain> | grep -i 'name server'`. If the apex already has A or CNAME records in Cloudflare (the zone scan
    imports them), delete them first: a Worker custom domain can't share a hostname with them. Then run
-   `terraform apply` again once Cloudflare shows the zone as active. Terraform manages two custom domains — the apex
-   and the `whats` subdomain from `site_subdomain` — and Cloudflare creates their DNS records automatically.
+   `terraform apply` again once Cloudflare shows the zone as active. Terraform manages the apex as a custom domain,
+   plus a second one for `site_subdomain` if you set it, and Cloudflare creates the DNS records automatically.
 6. **Make it yours.** Edit `.github/FUNDING.yml` to your own GitHub username, or delete the file to drop the Sponsors
    button. `github_repo` and `donate_url` in `terraform.tfvars` control what the landing page links to.
 
-Open `https://whats.your.domain` and make a link.
+Open `https://your.domain` (or `https://whats.your.domain` if you set `site_subdomain`) and make a link.
 
 ## Local development
 
