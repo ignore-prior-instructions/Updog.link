@@ -27,3 +27,7 @@ See [the API docs](SELF_HOSTING.md#the-api) for creating links and the rest of t
 ## But no, really, what is "Updog?"
 
 [Nothin' much. What's up with you?](https://knowyourmeme.com/memes/updog)
+
+## License
+
+[MIT](LICENSE). Fork it, run your own, do what you like.
