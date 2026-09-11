@@ -15,9 +15,15 @@ variable "github_repo" {
 }
 
 variable "donate_url" {
-  description = "Optional donation link. Leave empty to hide the donation line."
+  description = "Optional donation link (e.g. GitHub Sponsors). Empty hides the donation line."
   type        = string
-  default     = ""
+  default     = "https://github.com/sponsors/ignore-prior-instructions"
+}
+
+variable "site_subdomain" {
+  description = "Subdomain that serves the landing page. The apex serves shortlinks."
+  type        = string
+  default     = "whats"
 }
 
 variable "r2_location" {

@@ -11,6 +11,8 @@
     "TURNSTILE_SITEKEY": "1x00000000000000000000AA",
     "TURNSTILE_SECRET": "1x0000000000000000000000000000000AA",
     "GITHUB_REPO": "ignore-prior-instructions/Updog.link",
-    "DONATE_URL": ""
+    "DONATE_URL": "https://github.com/sponsors/ignore-prior-instructions",
+    "APEX_HOST": "",
+    "SITE_HOST": ""
   }
 }

@@ -14,6 +14,8 @@ own shortlink service. It doesn't collect information to track you or anyone els
 The whole thing is one Cloudflare Worker and one R2 bucket, deployed with Terraform.
 
 - `worker.js` serves the landing page, the create endpoint, redirects, and the 404 page. That's the entire application.
+- Two hostnames share it: `whats.<domain>` serves the landing page, and the apex serves shortlinks and 301s to the
+  landing page at its root.
 - The R2 bucket holds one small JSON object per link, keyed by slug. Creating a link is a conditional put that fails
   if the slug exists, so it's first come, first served, and a new link is live the instant it's created.
 - Cloudflare Turnstile guards the create form against bots, and a rate limiting rule caps creations per IP.
@@ -66,7 +68,7 @@ newer, and Node (for local development only).
    imports them), delete them first: a Worker custom domain can't share a hostname with them. Then run
    `terraform apply` again once Cloudflare shows the zone as active.
 
-Open `https://your.domain` and make a link.
+Open `https://whats.your.domain` and make a link.
 
 ## Local development
 
@@ -96,7 +98,11 @@ npx wrangler r2 object delete updog-links/<slug> --remote
 **Changing the page or logic** is editing `worker.js` and running `terraform apply`. Terraform tracks the file's hash
 and redeploys when it changes.
 
-**Rate limit and Turnstile** settings are in `terraform/ratelimit.tf` and `terraform/turnstile.tf`.
+**Rate limit and Turnstile** settings are in `terraform/ratelimit.tf` and `terraform/turnstile.tf`. The widget runs in
+invisible mode, so nothing is rendered and no visitor is asked to click anything.
+
+**Donations** are wired to GitHub Sponsors via `.github/FUNDING.yml` and the `donate_url` variable. Set that variable
+to an empty string to hide the donation line entirely.
 
 ## But no, really, what is "Updog?"
 
