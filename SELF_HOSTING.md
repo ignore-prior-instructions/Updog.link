@@ -62,6 +62,15 @@ newer, and Node (for local development only).
    plus a second one for `site_subdomain` if you set it, and Cloudflare creates the DNS records automatically.
 6. **Make it yours.** Edit `.github/FUNDING.yml` to your own GitHub username, or delete the file to drop the Sponsors
    button. `github_repo` and `donate_url` in `terraform.tfvars` control what the landing page links to.
+7. **Seed the examples** so a brand-new deploy isn't an empty shortener:
+
+   ```sh
+   CLOUDFLARE_ACCOUNT_ID=... CLOUDFLARE_API_TOKEN=... node scripts/seed.mjs
+   ```
+
+   This creates the links in `SAMPLES` at the top of `worker.js` — the same list the landing page draws its rotating
+   placeholder from, so every suggestion the form makes is a link that actually resolves. Existing slugs are never
+   overwritten, so it's safe to re-run.
 
 Open `https://your.domain` (or `https://whats.your.domain` if you set `site_subdomain`) and make a link.
 
