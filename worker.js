@@ -28,6 +28,36 @@ const RESERVED = new Set(["api", "admin", "favicon", "robots", "static", "assets
 
 const MAX_DESTINATION_LENGTH = 2048;
 
+// Word pairs for auto-named links, e.g. "plucky-corgi". 48 x 48 is 2304 base
+// combinations, and a numeric suffix is added if the first tries collide.
+const ADJECTIVES = [
+  "bold", "bouncy", "brave", "cheerful", "clever", "curious", "dapper", "eager",
+  "fancy", "fuzzy", "gentle", "glad", "golden", "grumpy", "happy", "hungry",
+  "jolly", "lanky", "lively", "loyal", "lucky", "merry", "mighty", "nimble",
+  "noble", "perky", "plucky", "proud", "quiet", "rapid", "rowdy", "scruffy",
+  "shaggy", "silly", "sleepy", "snappy", "snug", "speedy", "spotted", "sturdy",
+  "sunny", "swift", "tidy", "trusty", "wiggly", "witty", "zany", "zippy",
+];
+const NOUNS = [
+  "bark", "beagle", "biscuit", "bone", "boxer", "buddy", "chew", "collar",
+  "collie", "comet", "corgi", "dachshund", "dash", "echo", "ember", "fetch",
+  "finch", "hazel", "howl", "husky", "juniper", "kennel", "kibble", "leash",
+  "maple", "mutt", "muzzle", "nimbus", "paw", "pebble", "poodle", "pounce",
+  "pug", "puppy", "ranger", "retriever", "romp", "scout", "setter", "snout",
+  "spaniel", "tail", "terrier", "treat", "wag", "whippet", "willow", "zoomies",
+];
+
+function pick(list) {
+  return list[Math.floor(Math.random() * list.length)];
+}
+
+// Attempts past the first few add digits, so a busy shortener still finds a
+// free name quickly instead of retrying the same small space.
+function randomSlug(attempt = 0) {
+  const base = `${pick(ADJECTIVES)}-${pick(NOUNS)}`;
+  return attempt < 2 ? base : `${base}-${Math.floor(Math.random() * 900) + 100}`;
+}
+
 // Example links. The landing page shows a different one as its placeholder on
 // every render, and `node scripts/seed.mjs` creates them for real so a fresh
 // deploy isn't a completely empty shortener. Single source of truth for both.
@@ -112,10 +142,14 @@ async function createLink(request, env, url) {
   const token = String(body.token ?? "");
   const linkHost = env.APEX_HOST || url.host;
 
-  if (!SLUG_RE.test(slug)) {
-    return json({ error: "Slug must be 1–64 letters, digits, dashes or underscores." }, 400);
+  // An omitted or empty slug means "you pick one for me".
+  const autoName = slug === "";
+  if (!autoName) {
+    if (!SLUG_RE.test(slug)) {
+      return json({ error: "Slug must be 1–64 letters, digits, dashes or underscores." }, 400);
+    }
+    if (RESERVED.has(slug)) return json({ error: "That slug is reserved." }, 400);
   }
-  if (RESERVED.has(slug)) return json({ error: "That slug is reserved." }, 400);
 
   const ownHosts = [env.APEX_HOST, env.SITE_HOST, url.hostname].filter(Boolean);
   const destination = parseDestination(String(body.destination ?? "").trim(), ownHosts);
@@ -126,15 +160,29 @@ async function createLink(request, env, url) {
   const human = await verifyTurnstile(token, env.TURNSTILE_SECRET, request.headers.get("CF-Connecting-IP"));
   if (!human) return json({ error: "Bot check failed. Reload the page and try again." }, 403);
 
-  const record = JSON.stringify({ slug, destination, created_at: new Date().toISOString() });
-  const stored = await env.LINKS.put(slug, record, {
-    httpMetadata: { contentType: "application/json" },
-    onlyIf: new Headers({ "If-None-Match": "*" }), // first come, first served
-  });
-  if (stored === null) return json({ error: `${linkHost}/${slug} is already taken.` }, 409);
-
   const scheme = url.protocol === "http:" && !env.APEX_HOST ? "http" : "https";
-  return json({ url: `${scheme}://${linkHost}/${slug}`, destination }, 201);
+
+  // A name the caller chose gets one attempt — if it's taken, that's a 409 and
+  // they pick another. A name we chose gets several, since a collision is our
+  // problem to solve, not theirs.
+  const attempts = autoName ? 6 : 1;
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    const name = autoName ? randomSlug(attempt) : slug;
+    if (autoName && RESERVED.has(name)) continue;
+
+    const record = JSON.stringify({ slug: name, destination, created_at: new Date().toISOString() });
+    const stored = await env.LINKS.put(name, record, {
+      httpMetadata: { contentType: "application/json" },
+      onlyIf: new Headers({ "If-None-Match": "*" }), // first come, first served
+    });
+
+    if (stored !== null) {
+      return json({ slug: name, url: `${scheme}://${linkHost}/${name}`, destination }, 201);
+    }
+    if (!autoName) return json({ error: `${linkHost}/${name} is already taken.` }, 409);
+  }
+
+  return json({ error: "Couldn't find a free name. Try again." }, 503);
 }
 
 // A hostname with a trailing dot ("updog.link.") is the same DNS name as one
@@ -197,7 +245,7 @@ async function apiLinks(request, env, url) {
         return json({
           resource: API_ROOT,
           methods: {
-            "POST /api/links": "create a link from {slug, destination, token}",
+            "POST /api/links": "create a link from {destination, token} and an optional slug; omit slug and one is generated",
             "GET /api/links/<slug>": "look up a single link",
             "PUT /api/links/<slug>": "not implemented; links are immutable",
             "DELETE /api/links/<slug>": "not implemented; removal is an operator action",
@@ -361,6 +409,10 @@ const STYLE = `
     cursor: pointer; white-space: nowrap;
   }
   button:hover { background: var(--accent-deep); }
+  .roll { background: transparent; color: var(--faint); border: 0; border-left: 1px solid var(--hairline);
+    font: 600 12px 'Gabarito', system-ui, sans-serif; text-transform: uppercase; letter-spacing: .5px;
+    padding: 0 12px; align-self: stretch; }
+  .roll:hover { background: transparent; color: var(--accent); }
 
   /* Invisible in production, so it should occupy no space. :empty also
      collapses it if the Turnstile script fails to load, while still letting
@@ -453,7 +505,8 @@ function landingPage(env) {
         <span class="prefix">${linkHost}/</span>
         <label for="slug" hidden>Shortlink name</label>
         <input type="text" id="slug" name="slug" placeholder="${esc(sampleSlug)}"
-               maxlength="64" pattern="[A-Za-z0-9_-]+" autocapitalize="off" spellcheck="false" required>
+               maxlength="64" pattern="[A-Za-z0-9_-]+" autocapitalize="off" spellcheck="false">
+        <button type="button" id="roll" class="roll" title="Pick a name for me">Generate</button>
       </div>
       <div class="row">
         <div class="field">
@@ -465,8 +518,8 @@ function landingPage(env) {
       <div class="cf-turnstile" data-sitekey="${esc(env.TURNSTILE_SITEKEY)}"></div>
       <p id="result" aria-live="polite"></p>
     </form>
-    <p class="fine">Links can't be edited once created. Report abusive links
-      <a href="${repoUrl}/issues">on GitHub</a>.</p>
+    <p class="fine">Leave the name blank and one gets picked for you. Links can't be edited once created.
+      Report abusive links <a href="${repoUrl}/issues">on GitHub</a>.</p>
 
     <div class="sections">
       <div>
@@ -493,6 +546,18 @@ function landingPage(env) {
 <script>
   const form = document.getElementById("create");
   const result = document.getElementById("result");
+  const slug = document.getElementById("slug");
+
+  // Same lists the Worker uses, so a rolled name looks like an auto-named one.
+  // Leaving the field empty asks the server to pick instead, which it retries
+  // on collision; rolling here is just so you can see and re-roll the name.
+  const ADJECTIVES = ${JSON.stringify(ADJECTIVES)};
+  const NOUNS = ${JSON.stringify(NOUNS)};
+  const pick = (list) => list[Math.floor(Math.random() * list.length)];
+  document.getElementById("roll").addEventListener("click", () => {
+    slug.value = pick(ADJECTIVES) + "-" + pick(NOUNS);
+    slug.focus();
+  });
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     const data = new FormData(form);

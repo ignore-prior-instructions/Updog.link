@@ -61,7 +61,7 @@ chk "angle brackets"            400 "$(post "$(payload '<script>' 'https://examp
 chk "single quote"              400 "$(post "$(payload "a'b" 'https://example.com')")"
 chk "non-ascii"                 400 "$(post "$(payload 'héllo' 'https://example.com')")"
 chk "space"                     400 "$(post "$(payload 'a b' 'https://example.com')")"
-chk "empty"                     400 "$(post "$(payload '' 'https://example.com')")"
+chk_ok "empty means auto-name"      "$(post "$(payload '' 'https://example.com')")"
 chk "over 64 chars"             400 "$(post "$(payload "$(printf 'a%.0s' $(seq 65))" 'https://example.com')")"
 chk "leading hyphen"            400 "$(post "$(payload '-lead' 'https://example.com')")"
 chk "reserved: api"             400 "$(post "$(payload 'api' 'https://example.com')")"

@@ -115,7 +115,7 @@ The landing page is just a client of this; there's nothing it can do that you ca
 | Request | Behaviour |
 |---|---|
 | `GET /api/links` | Describes the resource. Deliberately does not list links. |
-| `POST /api/links` | Creates a link from `{slug, destination, token}`, where `token` comes from Turnstile. |
+| `POST /api/links` | Creates a link from `{destination, token}`, where `token` comes from Turnstile. `slug` is optional: omit it and a name like `plucky-corgi` is generated, retrying if it collides. |
 | `GET /api/links/<slug>` | Returns `{slug, destination, created_at, url}`, or 404. |
 | `PUT`/`PATCH` `/api/links/<slug>` | `501`. Links are immutable once created. |
 | `DELETE /api/links/<slug>` | `501`. Removal is an operator action against the bucket. |
@@ -123,6 +123,15 @@ The landing page is just a client of this; there's nothing it can do that you ca
 ```sh
 curl https://updog.link/api/links/github
 # {"slug":"github","destination":"https://github.com","created_at":"...","url":"https://updog.link/github"}
+```
+
+Leaving the name out is the easy path — the server picks one and keeps trying until it finds a free one, so a
+caller never has to handle a collision:
+
+```sh
+curl -X POST https://updog.link/api/links -H 'content-type: application/json' \
+  -d '{"destination":"https://example.com","token":"<turnstile>"}'
+# {"slug":"plucky-corgi","url":"https://updog.link/plucky-corgi","destination":"https://example.com"}
 ```
 
 The two write-shaped methods are wired up but inactive on purpose, so the shape of the resource is obvious without
