@@ -1,5 +1,0 @@
-title: Updog.link
-description: Updog.link is an ad-free and open-source URL Shortener service that anyone can deploy and run. 
-baseurl: "" # the subpath of your site, e.g. /blog
-url: "https://whats.updog.link" # the base hostname & protocol for your site, e.g. http://example.com
-theme: jekyll-theme-slate

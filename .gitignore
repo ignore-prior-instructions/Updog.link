@@ -1,8 +1,19 @@
-# MacOS in general...
+# macOS
 **/.DS_Store
 
-# Terraform things
-**/.terraform
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.*
+terraform/terraform.tfvars
+terraform/backend.hcl
 
-# Jekyll build directory
-**/_site
+# Wrangler local dev state
+.wrangler/
+node_modules/
+
+# Credentials
+.env
+
+# Local backend override (temporary, until R2 state creds exist)
+terraform/*_override.tf

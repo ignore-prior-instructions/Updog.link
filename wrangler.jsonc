@@ -1,0 +1,18 @@
+// Local development only: `npx wrangler dev`
+//
+// Production is deployed with Terraform (see terraform/), not `wrangler deploy`.
+// The Turnstile keys below are Cloudflare's public test keys; they always pass.
+{
+  "name": "updog-link",
+  "main": "worker.js",
+  "compatibility_date": "2025-09-01",
+  "r2_buckets": [{ "binding": "LINKS", "bucket_name": "updog-links" }],
+  "vars": {
+    "TURNSTILE_SITEKEY": "1x00000000000000000000AA",
+    "TURNSTILE_SECRET": "1x0000000000000000000000000000000AA",
+    "GITHUB_REPO": "ignore-prior-instructions/Updog.link",
+    "DONATE_URL": "https://github.com/sponsors/ignore-prior-instructions",
+    "APEX_HOST": "",
+    "SITE_HOST": ""
+  }
+}

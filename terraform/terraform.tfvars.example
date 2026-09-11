@@ -1,0 +1,6 @@
+# Copy to terraform.tfvars and fill in.
+account_id  = "0123456789abcdef0123456789abcdef"
+domain      = "updog.link"
+github_repo = "ignore-prior-instructions/Updog.link"
+donate_url  = "https://github.com/sponsors/ignore-prior-instructions"
+r2_location = "wnam"
