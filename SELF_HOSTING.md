@@ -43,14 +43,14 @@ newer, and Node (for local development only).
 
    ```sh
    git clone https://github.com/ignore-prior-instructions/Updog.link && cd Updog.link/terraform
-   cp backend.hcl.example backend.hcl        # put your account id in the endpoint
    cp terraform.tfvars.example terraform.tfvars   # account id, domain, repo, donate link
 
    export CLOUDFLARE_API_TOKEN=...            # from step 3
    export AWS_ACCESS_KEY_ID=...               # from step 2 (R2 token)
    export AWS_SECRET_ACCESS_KEY=...
+   export AWS_ENDPOINT_URL_S3=https://<your-account-id>.r2.cloudflarestorage.com
 
-   terraform init -backend-config=backend.hcl
+   terraform init
    terraform apply
    ```
 
@@ -174,3 +174,18 @@ scripts/security-test.sh https://updog.link  # against a deployment
 
 It's safe to point at production: anything that should be accepted is stopped by the bot check before a link is
 written, and the script paces itself around the rate limit.
+
+## Deploying from CI instead of your laptop
+
+`.github/workflows/terraform.yml` runs `terraform plan` on pull requests (posting the diff as a PR comment) and
+`terraform apply` on every push to `master`. To use it on your own fork, add these as repository secrets (Settings →
+Secrets and variables → Actions), using the same values from step 4 above:
+
+- `CLOUDFLARE_API_TOKEN`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`
+- `CLOUDFLARE_ACCOUNT_ID`, `DOMAIN` — plain values, not really secret, but secrets are the easiest place to put them
+
+If you didn't set `site_subdomain`, delete the `TF_VAR_site_subdomain: whats` line from the workflow's `env:` block;
+it's specific to updog.link's own split-domain setup, not a sensible default for a fresh deploy.
+
+Secrets aren't available to `pull_request` workflow runs triggered from a fork, so the plan job only works for PRs
+from branches within your own repo — which is the normal case if you're the only one merging to `master`.
