@@ -57,17 +57,13 @@ export default {
       return redirect(`https://${apex}${pathname}${url.search}`, 301);
     }
 
-    if (pathname === "/api/links") {
-      if (request.method !== "POST") return json({ error: "Method not allowed." }, 405);
-      // CSRF guard. A cross-origin HTML form can only send urlencoded, form-data
-      // or text/plain; requiring JSON forces a preflight, which this Worker
-      // never answers. There is no session or cookie to abuse either, so this
-      // is belt-and-braces rather than the only thing standing in the way.
-      const contentType = request.headers.get("Content-Type") || "";
-      if (!contentType.toLowerCase().startsWith("application/json")) {
-        return json({ error: "Expected Content-Type: application/json." }, 415);
-      }
-      return createLink(request, env, url);
+    if (pathname === API_ROOT || pathname.startsWith(API_ROOT + "/")) {
+      return apiLinks(request, env, url);
+    }
+    // Any other /api path is an API mistake, so answer in JSON rather than
+    // falling through to the HTML 404.
+    if (pathname === "/api" || pathname.startsWith("/api/")) {
+      return json({ error: `Unknown endpoint. The only resource is ${API_ROOT}.` }, 404);
     }
     if (request.method !== "GET" && request.method !== "HEAD") {
       return json({ error: "Method not allowed." }, 405);
@@ -97,6 +93,15 @@ export default {
 };
 
 async function createLink(request, env, url) {
+  // CSRF guard. A cross-origin HTML form can only send urlencoded, form-data or
+  // text/plain; requiring JSON forces a preflight, which this Worker never
+  // answers. There is no session or cookie to abuse either, so this is defence
+  // in depth rather than the only thing standing in the way.
+  const contentType = request.headers.get("Content-Type") || "";
+  if (!contentType.toLowerCase().startsWith("application/json")) {
+    return json({ error: "Expected Content-Type: application/json." }, 415);
+  }
+
   let body;
   try {
     body = await request.json();
@@ -173,6 +178,86 @@ async function verifyTurnstile(token, secret, ip) {
   });
   const data = await res.json();
   return data.success === true;
+}
+
+// --- api ---------------------------------------------------------------------
+
+// /api/links          GET describes the resource, POST creates a link
+// /api/links/<slug>   GET reads one link; PUT and DELETE are deliberate stubs
+const API_ROOT = "/api/links";
+
+async function apiLinks(request, env, url) {
+  const tail = url.pathname.slice(API_ROOT.length);
+  const slug = tail.replace(/^\//, "");
+
+  if (!slug) {
+    switch (request.method) {
+      case "GET":
+      case "HEAD":
+        return json({
+          resource: API_ROOT,
+          methods: {
+            "POST /api/links": "create a link from {slug, destination, token}",
+            "GET /api/links/<slug>": "look up a single link",
+            "PUT /api/links/<slug>": "not implemented; links are immutable",
+            "DELETE /api/links/<slug>": "not implemented; removal is an operator action",
+          },
+          // Deliberately not listable. Every link is public to anyone who knows
+          // its name, but handing out the whole set is a different thing.
+          listing: "not available",
+        });
+      case "POST":
+        return createLink(request, env, url);
+      default:
+        return methodNotAllowed(["GET", "POST"]);
+    }
+  }
+
+  switch (request.method) {
+    case "GET":
+    case "HEAD":
+      return readLink(slug, env, url);
+    // Editing would break the promise that a link, once made, keeps pointing
+    // where it pointed. Deletion is an operator action against the bucket, on
+    // purpose: anyone could otherwise remove a link they didn't create.
+    case "PUT":
+    case "PATCH":
+      return json({ error: "Not implemented. Links can't be edited once created." }, 501);
+    case "DELETE":
+      return json({ error: "Not implemented. To report a link, open an issue." }, 501);
+    default:
+      return methodNotAllowed(["GET"]);
+  }
+}
+
+async function readLink(slug, env, url) {
+  // Validate before touching R2, exactly as the redirect path does, so a
+  // crafted path can never reach storage as a key.
+  if (!SLUG_RE.test(slug) || RESERVED.has(slug)) {
+    return json({ error: "Not a valid shortlink name." }, 400);
+  }
+  const object = await env.LINKS.get(slug);
+  if (!object) return json({ error: "No such shortlink." }, 404);
+
+  const record = await object.json();
+  const linkHost = env.APEX_HOST || url.host;
+  const scheme = url.protocol === "http:" && !env.APEX_HOST ? "http" : "https";
+  return json({
+    slug,
+    destination: record.destination,
+    created_at: record.created_at ?? null,
+    url: `${scheme}://${linkHost}/${slug}`,
+  });
+}
+
+function methodNotAllowed(allowed) {
+  return new Response(JSON.stringify({ error: `Method not allowed. Try ${allowed.join(" or ")}.` }), {
+    status: 405,
+    headers: {
+      "Content-Type": "application/json; charset=utf-8",
+      Allow: allowed.join(", "),
+    },
+  });
 }
 
 // --- responses ---------------------------------------------------------------
