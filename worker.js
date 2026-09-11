@@ -378,6 +378,9 @@ const STYLE = `
     letter-spacing: 1px; margin: 0 0 10px; color: var(--accent);
   }
   .sections p { font-size: 16px; line-height: 1.7; margin: 0; }
+  pre { margin: 12px 0 0; padding: 10px 12px; background: #8881; border: 1px solid var(--hairline);
+    overflow-x: auto; }
+  pre code { font: 400 14px 'JetBrains Mono', ui-monospace, monospace; white-space: pre; }
 
   footer {
     border-top: 1px solid var(--hairline); padding: 20px 40px;
@@ -471,6 +474,12 @@ function landingPage(env) {
         <p>A free shortlink service with a
           <a href="https://www.urbandictionary.com/define.php?term=Sick"><em>sick</em></a> name — and no
           interest in tracking you or anyone else.${donate}</p>
+      </div>
+      <div>
+        <h2>There's an API</h2>
+        <p>This page is just a client of it. Look a link up, or create one by posting to the same resource.
+          <a href="${repoUrl}/blob/master/SELF_HOSTING.md#the-api">The docs</a> cover the rest.</p>
+        <pre><code>curl ${linkHost}/api/links/&lt;slug&gt;</code></pre>
       </div>
       <div>
         <h2>Run your own</h2>
