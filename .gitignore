@@ -11,3 +11,9 @@ terraform/backend.hcl
 # Wrangler local dev state
 .wrangler/
 node_modules/
+
+# Credentials
+.env
+
+# Local backend override (temporary, until R2 state creds exist)
+terraform/*_override.tf
