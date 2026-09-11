@@ -401,6 +401,11 @@ const STYLE = `
     font: 400 15px 'JetBrains Mono', ui-monospace, monospace; padding: 14px 8px; min-width: 0;
   }
   .field input::placeholder { color: var(--faint); }
+  /* Must come after the font shorthands above, which reset font-variant.
+     JetBrains Mono's programming ligatures redraw "://" so it reads like
+     ": //" — fine in code, misleading in a field where someone is checking the
+     URL they just typed. */
+  .prefix, .field input, pre code { font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0; }
   .row { display: flex; gap: 10px; margin-top: 10px; }
   .row .field { flex: 1; }
   button {
