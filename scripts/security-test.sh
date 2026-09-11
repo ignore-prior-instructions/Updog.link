@@ -92,8 +92,25 @@ ct() {
 }
 chk "form-urlencoded rejected"  415 "$(ct 'application/x-www-form-urlencoded' 'x=1')"
 chk "text/plain rejected"       415 "$(ct 'text/plain' '{"slug":"a","destination":"https://e.com","token":"x"}')"
+# No CORS headers are ever sent, so a denied preflight blocks the browser from
+# making a cross-origin write regardless.
 chk "OPTIONS preflight denied"  405 "$(curl -s -o /dev/null -m 15 -w '%{http_code}' -X OPTIONS "$BASE/api/links")"
-chk "GET denied"                405 "$(curl -s -o /dev/null -m 15 -w '%{http_code}' "$BASE/api/links")"
+chk "no CORS on write endpoint"  "" "$(curl -si -m 15 -X OPTIONS "$BASE/api/links" | grep -ci 'access-control-allow-origin' | sed 's/^0$//')"
+
+echo "-- API surface --"
+get() { curl -s -o /dev/null -m 15 -w '%{http_code}' "$1"; }
+meth() { curl -s -o /dev/null -m 15 -w '%{http_code}' -X "$1" "$2"; }
+chk "GET collection describes itself"  200 "$(get "$BASE/api/links")"
+chk "lookup: traversal"                400 "$(get "$BASE/api/links/..%2fsecret")"
+chk "lookup: slash in slug"            400 "$(get "$BASE/api/links/a/b")"
+chk "lookup: angle brackets"           400 "$(get "$BASE/api/links/%3Cscript%3E")"
+chk "lookup: reserved name"            400 "$(get "$BASE/api/links/api")"
+chk "lookup: unknown slug"             404 "$(get "$BASE/api/links/definitely-not-here")"
+chk "PUT is an inactive stub"          501 "$(meth PUT "$BASE/api/links/anything")"
+chk "DELETE is an inactive stub"       501 "$(meth DELETE "$BASE/api/links/anything")"
+chk "POST to an item rejected"         405 "$(meth POST "$BASE/api/links/anything")"
+chk "DELETE on collection rejected"    405 "$(meth DELETE "$BASE/api/links")"
+chk "unknown /api path"                404 "$(get "$BASE/api/nope")"
 
 echo "-- read path --"
 chk "traversal on GET"          404 "$(curl -s -o /dev/null -m 15 -w '%{http_code}' "$BASE/../etc/passwd")"

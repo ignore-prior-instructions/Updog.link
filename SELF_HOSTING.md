@@ -108,6 +108,27 @@ invisible mode, so nothing is rendered and no visitor is asked to click anything
 **Donations** are wired to GitHub Sponsors via `.github/FUNDING.yml` and the `donate_url` variable. Set that variable
 to an empty string to hide the donation line entirely.
 
+## The API
+
+The landing page is just a client of this; there's nothing it can do that you can't do with `curl`.
+
+| Request | Behaviour |
+|---|---|
+| `GET /api/links` | Describes the resource. Deliberately does not list links. |
+| `POST /api/links` | Creates a link from `{slug, destination, token}`, where `token` comes from Turnstile. |
+| `GET /api/links/<slug>` | Returns `{slug, destination, created_at, url}`, or 404. |
+| `PUT`/`PATCH` `/api/links/<slug>` | `501`. Links are immutable once created. |
+| `DELETE /api/links/<slug>` | `501`. Removal is an operator action against the bucket. |
+
+```sh
+curl https://updog.link/api/links/github
+# {"slug":"github","destination":"https://github.com","created_at":"...","url":"https://updog.link/github"}
+```
+
+The two write-shaped methods are wired up but inactive on purpose, so the shape of the resource is obvious without
+implying anyone can edit or remove a link they didn't create. Reads aren't rate limited — a lookup reveals nothing
+that following the shortlink wouldn't — but `POST` is.
+
 ## Safety
 
 The service takes two pieces of untrusted input, a slug and a destination URL, and both are validated narrowly.
