@@ -105,8 +105,8 @@ and redeploys when it changes.
 **Rate limit and Turnstile** settings are in `terraform/ratelimit.tf` and `terraform/turnstile.tf`. The widget runs in
 invisible mode, so nothing is rendered and no visitor is asked to click anything.
 
-**Donations** are wired to GitHub Sponsors via `.github/FUNDING.yml` and the `donate_url` variable. Set that variable
-to an empty string to hide the donation line entirely.
+**Donations** are wired to GitHub Sponsors via `.github/FUNDING.yml` and the `donate_url` variable, which adds a
+Donate link to the nav. Set that variable to an empty string to remove the link.
 
 ## The API
 

@@ -11,7 +11,7 @@
 //   TURNSTILE_SECRET  server-side key for verifying the bot check
 //   TURNSTILE_SITEKEY public key rendered into the form
 //   GITHUB_REPO       "owner/name", linked from the page
-//   DONATE_URL        optional; donation line is shown only when set
+//   DONATE_URL        optional; adds a Donate link to the nav when set
 //   APEX_HOST         hostname that serves shortlinks. Empty in local dev.
 //   SITE_HOST         hostname that serves the landing page. Empty in local dev.
 

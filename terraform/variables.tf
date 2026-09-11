@@ -15,7 +15,7 @@ variable "github_repo" {
 }
 
 variable "donate_url" {
-  description = "Optional donation link (e.g. GitHub Sponsors). Empty hides the donation line."
+  description = "Optional donation link (e.g. GitHub Sponsors). Empty hides the Donate link."
   type        = string
   default     = "https://github.com/sponsors/ignore-prior-instructions"
 }
