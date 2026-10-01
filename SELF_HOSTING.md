@@ -175,6 +175,13 @@ scripts/security-test.sh https://updog.link  # against a deployment
 It's safe to point at production: anything that should be accepted is stopped by the bot check before a link is
 written, and the script paces itself around the rate limit.
 
+The page also draws a QR code for each new link. The encoder is `qrMatrix` in `worker.js`, and the page embeds
+its source, so no QR library is loaded from anywhere. To check it against a real decoder:
+
+```sh
+npm install --no-save jsqr && node scripts/qr-test.mjs
+```
+
 ## Deploying from CI instead of your laptop
 
 `.github/workflows/terraform.yml` runs `terraform plan` on pull requests (posting the diff as a PR comment) and

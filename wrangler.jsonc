@@ -7,6 +7,10 @@
   "name": "updog-link",
   "main": "worker.js",
   "compatibility_date": "2025-09-01",
+  // The landing page embeds qrMatrix's source via Function.prototype.toString.
+  // Wrangler's bundler otherwise wraps functions in __name() calls that don't
+  // exist in the browser. Production uploads worker.js unbundled.
+  "keep_names": false,
   "r2_buckets": [{ "binding": "LINKS", "bucket_name": "updog-links" }],
   "vars": {
     "TURNSTILE_SITEKEY": "1x00000000000000000000BB",
