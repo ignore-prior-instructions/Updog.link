@@ -334,17 +334,18 @@ function esc(s) {
 
 // --- qr code -----------------------------------------------------------------
 
-// Encodes text as a QR code (byte mode, error correction level M, versions
-// 1–10, so up to 213 bytes; a shortlink is at most about 100) and returns the
-// grid as rows of booleans, true for dark. It runs in the browser: the landing
+// Encodes text as a QR code (byte mode, error correction level H, versions
+// 1–20, so up to 382 bytes; a shortlink is at most about 100) and returns the
+// grid as rows of booleans, true for dark. Level H can rebuild up to 30% of
+// the code, which leaves room for the dog in the middle (see qrLogoBox). It runs in the browser: the landing
 // page embeds this function's source, so the page still pulls in no
 // third-party scripts. It's self-contained for that reason, and exported so
 // scripts/qr-test.mjs can check it against a real decoder.
 //
 // Follows ISO/IEC 18004 and Project Nayuki's reference implementation.
 export function qrMatrix(text) {
-  const ECC_PER_BLOCK = [0, 10, 16, 26, 18, 24, 16, 18, 22, 22, 26];
-  const NUM_BLOCKS = [0, 1, 1, 1, 2, 2, 4, 4, 4, 5, 5];
+  const ECC_PER_BLOCK = [0, 17, 28, 22, 16, 22, 28, 26, 26, 24, 28, 24, 28, 22, 24, 24, 30, 28, 28, 26, 28];
+  const NUM_BLOCKS = [0, 1, 1, 2, 4, 4, 4, 5, 6, 8, 8, 11, 11, 16, 16, 18, 16, 19, 21, 25, 25];
   const bytes = new TextEncoder().encode(text);
 
   // Modules left for data and error correction once the fixed patterns are placed.
@@ -362,7 +363,7 @@ export function qrMatrix(text) {
   let version = 1;
   const lengthBits = () => (version < 10 ? 8 : 16);
   while (4 + lengthBits() + bytes.length * 8 > dataCodewords(version) * 8) {
-    if (++version > 10) throw new RangeError("Too long for a QR code");
+    if (++version > 20) throw new RangeError("Too long for a QR code");
   }
 
   // Data bits: mode, length, payload, terminator, then pad to capacity.
@@ -468,7 +469,7 @@ export function qrMatrix(text) {
   }
 
   const drawFormat = (mask) => {
-    const value = mask; // level M's two format bits are 00
+    const value = (0b10 << 3) | mask; // 10 is level H's format code
     let rem = value;
     for (let i = 0; i < 10; i++) rem = (rem << 1) ^ ((rem >>> 9) * 0x537);
     const f = ((value << 10) | rem) ^ 0x5412;
@@ -565,6 +566,15 @@ export function qrMatrix(text) {
   applyMask(best);
   drawFormat(best);
   return grid;
+}
+
+// The square of modules, centred, that the page paints over with the logo:
+// about a fifth of the width, so roughly 4% of the area — well within what
+// level H recovers. Odd-sized so it sits exactly in the middle. Returns the
+// first module index and the side length.
+export function qrLogoBox(size) {
+  const side = Math.floor(size * 0.2) | 1;
+  return { start: (size - side) / 2, side };
 }
 
 // --- pages -------------------------------------------------------------------
@@ -790,6 +800,7 @@ function landingPage(env) {
 
   // Built on the server from worker.js, so this is the same code its test runs.
   const qrMatrix = ${qrMatrix};
+  const qrLogoBox = ${qrLogoBox};
 
   // One canvas pixel per module plus a four-module quiet zone, scaled up by
   // CSS. The download is the same canvas, drawn bigger so it prints cleanly.
@@ -803,9 +814,17 @@ function landingPage(env) {
     ctx.fillStyle = "#fff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = "#000";
+    const logo = qrLogoBox(grid.length);
+    const inLogo = (i) => i >= logo.start && i < logo.start + logo.side;
     grid.forEach((row, y) => row.forEach((dark, x) => {
-      if (dark) ctx.fillRect((x + quiet) * scale, (y + quiet) * scale, scale, scale);
+      if (dark && !(inLogo(x) && inLogo(y))) ctx.fillRect((x + quiet) * scale, (y + quiet) * scale, scale, scale);
     }));
+    // The dog sits on the white left by the skipped modules; error correction
+    // fills in what it covers.
+    ctx.font = logo.side * scale * 0.85 + "px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("🐶", canvas.width / 2, canvas.height / 2 + logo.side * scale * 0.05);
     const link = qr.querySelector("a");
     link.href = canvas.toDataURL("image/png");
     link.download = name + ".png";
